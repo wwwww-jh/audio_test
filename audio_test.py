@@ -23,6 +23,14 @@ def asr_large_api(audio_file_path: str, timeout: int = 300) -> str:
     except Exception as e:
         print(f"[ASR 接口错误] {e}")
         return ""
+    
+
+
+# 把所有模型接口注册到一个列表里
+ASR_MODELS = [
+    ("large", asr_large_api),
+    # 以后可以继续新增 ("model_name", model_call_fn)
+]
 
 # 调整音量和混合
 def adjust_volume(seg: AudioSegment, percent: float) -> AudioSegment:
@@ -99,27 +107,38 @@ def main():
         for noise in noises:
             np_ = os.path.join(noise_dir, noise)
             for idx, (vv,vn) in enumerate(params,1):
+                # 1. 混音并导出
                 mix = mix_tracks(vp,np_,vv,vn)
-                name = f"{os.path.splitext(v)[0]}_{os.path.splitext(noise)[0]}_{vv}_{vn}_{idx}"
-                mix_path = os.path.join(out_dir,'mixed_'+name+'.wav')
+                base_name = f"{os.path.splitext(v)[0]}_{os.path.splitext(noise)[0]}_{vv}_{vn}"
+                mix_path = os.path.join(out_dir,f"mixed_{base_name}.wav")
                 mix.export(mix_path, format='wav')
+                # 2. 播放并录音
                 rec = play_and_record(mix)
                 rec16 = (np.clip(rec,-1,1)*32767).astype(np.int16)
-                rec_path = os.path.join(out_dir,'rec_'+name+'.wav')
+                rec_path = os.path.join(out_dir,f"rec_{base_name}.wav")
                 write(rec_path,mix.frame_rate,rec16)
-                hyp = asr_large_api(rec_path)
-                res_path = os.path.join(out_dir,'result_'+name+'.txt')
-                open(res_path,'w',encoding='utf-8').write(hyp)
-                c = cer(clean_chinese_text(ref_texts[v]), clean_chinese_text(hyp))
-                summary.append((v,noise,vv,vn,idx,c))
-                print(f'{name} CER: {c*100:.2f}%')
+                # 3. 分别调用 ASR
+                for model_name, model_fn in ASR_MODELS:
+                    hyp = model_fn(rec_path)
+                    # 保存识别结果
+                    res_path = os.path.join(out_dir, f"result_{model_name}_{base_name}.txt")
+                    with open(res_path, 'w', encoding='utf-8') as f:
+                        f.write(hyp)
+
+                    # 计算 CER 并记录
+                    c = cer(
+                        clean_chinese_text(ref_texts[v]),
+                        clean_chinese_text(hyp)
+                    )
+                    summary.append((v, noise, vv, vn, model_name, c))
+                    print(f"{base_name} [{model_name}] CER: {c*100:.2f}%")
     # 写 summary
-    sum_file = os.path.join(out_dir,'summary.txt')
-    with open(sum_file,'w',encoding='utf-8') as sf:
-        sf.write('vocal\tnoise\tvol_v\tvol_n\ttest_idx\tCER\n')
-        for v,noise,vv,vn,i,c in summary:
-            sf.write(f'{v}\t{noise}\t{vv}\t{vn}\t{i}\t{c*100:.2f}%\n')
-    print('全部完成，结果在',out_dir)
+    sum_file = os.path.join(out_dir, 'summary.txt')
+    with open(sum_file, 'w', encoding='utf-8') as sf:
+        sf.write('vocal\tnoise\tvol_v\tvol_n\tmodel\tCER\n')
+        for v, noise, vv, vn, model_name, c in summary:
+            sf.write(f'{v}\t{noise}\t{vv}\t{vn}\t{model_name}\t{c*100:.2f}%\n')
+    print('全部完成，结果在', out_dir)
 
 if __name__=='__main__':
     main()
