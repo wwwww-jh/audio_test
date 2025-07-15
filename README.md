@@ -34,3 +34,50 @@ project-root/
 
 ---
 
+## 环境与依赖
+
+* Python 3.8 及以上
+* 建议使用虚拟环境
+* 系统需安装 [FFmpeg](https://ffmpeg.org)（用于 `pydub`）
+
+安装方式：
+
+```bash
+python3 -m venv venv
+source venv/bin/activate   # macOS/Linux
+# .\venv\Scripts\Activate.ps1  # Windows PowerShell
+
+pip install -r requirements.txt
+```
+
+---
+
+## 配置
+
+1. 确保本地 ASR 服务已启动并可访问，默认接口地址：
+   `http://10.10.185.9:7861/asr_large`
+2. 可以继续新增 ("model_name", model_call_fn)到ASR_MODELS
+
+---
+
+## 使用说明
+
+在激活虚拟环境后运行：
+
+```bash
+python audio_test.py
+```
+
+1. 输入结果保存目录名称，会在项目根创建该文件夹
+2. 输入音量测试次数，例如 `2`
+3. 按顺序输入每次的人声音量 % 和噪声音量 %
+
+脚本将对每个人声 × 噪音组合及每组参数执行测试，生成以下文件：
+
+* `mixed_<人声>_<噪音>_<音量人声>_<音量噪音>_<轮次>.wav`
+* `rec_<人声>_<噪音>_<音量人声>_<音量噪音>_<轮次>.wav`
+* `result_<人声>_<噪音>_<音量人声>_<音量噪音>_<轮次>.txt`
+* `summary.txt` （汇总所有测试的 CER）
+
+---
+
