@@ -1,0 +1,6 @@
+pydub
+sounddevice
+numpy
+scipy
+requests
+jiwer
