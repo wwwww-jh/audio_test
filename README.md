@@ -56,7 +56,7 @@ pip install -r requirements.txt
 
 1. 确保本地 ASR 服务已启动并可访问，默认接口地址：
    `http://10.10.185.9:7861/asr_large`
-2. 如需修改，请编辑 `audio_test.py` 中 `asr_large_api` 函数
+2. 可以继续新增 ("model_name", model_call_fn)到ASR_MODELS
 
 ---
 
