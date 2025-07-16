@@ -121,12 +121,11 @@ USB_MIC-1.20m/
 ### 使用步骤
 
 ```bash
-python visualize.py --root /path/to/project-root
+python visualize.py 
 ```
 
-1. 默认 `--root` 为当前目录，可通过 `-r <路径>` 指定。
-2. 程序列出所有子目录，按提示输入要分析的目录编号（如 `1,3`）。
-3. 会生成：
+1. 程序列出所有子目录，按提示输入要分析的目录编号（如 `1,3`）。
+2. 会生成：
 
    * **`result.txt`**：合并后的原始记录表
    * **`bubble_by_model.png`**：按模型拆分的气泡图
