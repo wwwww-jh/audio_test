@@ -27,7 +27,8 @@ project-root/
 ├── 噪音样本/        # 存放噪音音频
 │   ├── x.wav
 │   └── ...
-├── audio_test.py    # 主脚本
+├── audio_test.py    # 语音识别脚本
+├── visualiz1.py     # 可视化脚本
 ├── README.md        # 项目说明（此文件）
 └── requirements.txt # 依赖列表
 ```
