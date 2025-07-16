@@ -38,17 +38,20 @@ def adjust_volume(seg: AudioSegment, percent: float) -> AudioSegment:
     gain_db = 20*math.log10(ratio) if ratio>0 else -120
     return seg.apply_gain(gain_db)
 
-def mix_tracks(vocal_path, noise_path, vol_v, vol_n) -> AudioSegment:
+# 混音，返回(人声音频, 噪声音频, 混合后音频)
+def mix_tracks(vocal_path, noise_path, vol_v, vol_n):
     v = AudioSegment.from_file(vocal_path)
     n = AudioSegment.from_file(noise_path)
     v2 = adjust_volume(v, vol_v)
     n2 = adjust_volume(n, vol_n)
+    # 长度对齐
     lv, ln = len(v2), len(n2)
-    if lv>ln:
-        n2 = (n2*(math.ceil(lv/ln)))[:lv]
+    if lv > ln:
+        n2 = (n2 * math.ceil(lv / ln))[:lv]
     else:
         n2 = n2[:lv]
-    return v2.overlay(n2)
+    mix = v2.overlay(n2)
+    return v2, n2, mix
 
 # 播放并录音
 def play_and_record(audio: AudioSegment) -> np.ndarray:
@@ -97,10 +100,15 @@ def main():
             np_ = os.path.join(noise_dir, noise)
             for idx, (vv,vn) in enumerate(params,1):
                 # 1. 混音并导出
-                mix = mix_tracks(vp,np_,vv,vn)
+                v2, n2, mix = mix_tracks(vp, np_, vv, vn)
                 base_name = f"{os.path.splitext(v)[0]}_{os.path.splitext(noise)[0]}_{vv}_{vn}"
                 mix_path = os.path.join(out_dir,f"mixed_{base_name}.wav")
                 mix.export(mix_path, format='wav')
+
+                # 计算 dB 差值
+                db_diff = v2.dBFS - n2.dBFS
+
+
                 # 2. 播放并录音
                 rec = play_and_record(mix)
                 rec16 = (np.clip(rec,-1,1)*32767).astype(np.int16)
@@ -119,14 +127,14 @@ def main():
                         clean_chinese_text(ref_texts[v]),
                         clean_chinese_text(hyp)
                     )
-                    summary.append((v, noise, vv, vn, model_name, c))
-                    print(f"{base_name} [{model_name}] CER: {c*100:.2f}%")
+                    summary.append((v, noise, vv, vn, db_diff, model_name, c))
+                    print(f"{base_name} [{model_name}] CER: {c*100:.2f}%, dB差: {db_diff:.2f}dB")
     # 写 summary
     sum_file = os.path.join(out_dir, 'summary.txt')
     with open(sum_file, 'w', encoding='utf-8') as sf:
-        sf.write('vocal\tnoise\tvol_v\tvol_n\tmodel\tCER\n')
-        for v, noise, vv, vn, model_name, c in summary:
-            sf.write(f'{v}\t{noise}\t{vv}\t{vn}\t{model_name}\t{c*100:.2f}%\n')
+        sf.write('vocal\tnoise\tvol_v\tvol_n\tdB_diff\tmodel\tCER\n')
+        for v, noise, vv, vn, db_diff, model_name, c in summary:
+            sf.write(f'{v}\t{noise}\t{vv}\t{vn}\t{db_diff:.2f} dB\t{model_name}\t{c*100:.2f}%\n')
     print('全部完成，结果在', out_dir)
 
 if __name__=='__main__':
