@@ -1,10 +1,25 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+visualize.py
+
+集成数据提取与气泡图绘制：
+- 扫描指定根目录下所有包含 summary.txt 的子目录
+- 交互式选择要分析的文件夹
+- 提取 vocal, noise, distance_m, device, dB_diff, model, CER
+- 绘制气泡图：X=distance_m, Y=dB_diff, 气泡大小=CER, 颜色=model
+- 保存结果表 result.txt 和图表 bubble.png
+"""
 import os
 import re
 import argparse
 import csv
 
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
 def find_summary_dirs(root_dir):
-    """返回所有包含 summary.txt 的子目录名字列表"""
     dirs = []
     for name in os.listdir(root_dir):
         full = os.path.join(root_dir, name)
@@ -14,20 +29,18 @@ def find_summary_dirs(root_dir):
 
 
 def select_dirs(dirs):
-    """交互式选择目录，返回选中的目录名字列表"""
     print("发现以下可选目录：")
-    for idx, d in enumerate(dirs, 1):
+    for idx, d in enumerate(dirs, start=1):
         print(f"{idx}. {d}")
     sel = input("请输入要合并的目录编号（逗号分隔，例如 1,3）：").strip()
     nums = [int(x) for x in re.split(r'[,\s]+', sel) if x.isdigit()]
-    chosen = [dirs[i-1] for i in nums if 1 <= i <= len(dirs)]
-    return chosen
+    return [dirs[i-1] for i in nums if 1 <= i <= len(dirs)]
 
 
 def parse_summary(path):
     """
-    解析单个 summary.txt，返回 header 列表和记录列表
-    将 vol_v, vol_n, distance_m, dB_diff, CER 转为 float
+    解析 summary.txt，返回记录列表
+    仅保留 vocal, noise, distance_m, device, dB_diff, model, CER
     """
     rows = []
     with open(path, 'r', encoding='utf-8') as f:
@@ -37,61 +50,92 @@ def parse_summary(path):
             if len(parts) != len(header):
                 continue
             rec = dict(zip(header, parts))
-            # 转数值字段
+            # 转数值
             rec['distance_m'] = float(rec['distance_m'])
-            rec['dB_diff']    = float(rec['dB_diff'].replace(' dB',''))
+            rec['dB_diff']    = float(rec['dB_diff'].replace(' dB', ''))
+            # CER 百分号转数
             rec['CER']        = float(rec['CER'].replace('%',''))
-            rows.append(rec)
-    return header, rows
+            # 取所需字段
+            subset = {
+                'vocal': rec['vocal'],
+                'noise': rec['noise'],
+                'distance_m': rec['distance_m'],
+                'device': rec['device'],
+                'dB_diff': rec['dB_diff'],
+                'model': rec['model'],
+                'CER': rec['CER'],
+            }
+            rows.append(subset)
+    return rows
+
+
+def plot_bubble(df, out_file='bubble.png'):
+    """
+    气泡图：
+    X=distance_m, Y=dB_diff, 气泡大小=CER, 颜色=model
+    """
+    fig, ax = plt.subplots()
+    # 根据 CER 调整气泡大小
+    sizes = (df['CER'] - df['CER'].min() + 1) * 50
+    # 分模型绘制
+    for model, group in df.groupby('model'):
+        ax.scatter(
+            group['distance_m'],
+            group['dB_diff'],
+            s=sizes[group.index],
+            label=model,
+            alpha=0.6,
+            edgecolors='w',
+            linewidth=0.5,
+        )
+    ax.set_xlabel('Distance (m)')
+    ax.set_ylabel('dB Difference')
+    ax.set_title('Bubble Chart: Distance vs dB_diff, Bubble=CER, Color=Model')
+    ax.legend(title='Model')
+    fig.tight_layout()
+    fig.savefig(out_file)
+    print(f"已保存气泡图: {out_file}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="合并多个实验文件夹下 summary.txt 中的数据，输出 result.txt"
+        description='合并 summary.txt 并绘制气泡图'
     )
     parser.add_argument(
         '--root', '-r',
         default=os.getcwd(),
-        help='存放各实验子目录的根目录（默认当前目录）'
+        help='根目录，包含各实验子目录'
     )
     args = parser.parse_args()
 
-    # 1. 找到所有包含 summary.txt 的子目录
+    # 扫描
     dirs = find_summary_dirs(args.root)
     if not dirs:
-        print("在根目录未发现任何包含 summary.txt 的子目录，退出。")
+        print("未找到包含 summary.txt 的子目录，退出。")
         return
-
-    # 2. 交互式选择
-    chosen = select_dirs(dirs)
-    if not chosen:
+    # 选择
+    selected = select_dirs(dirs)
+    if not selected:
         print("未选择任何目录，退出。")
         return
 
-    # 3. 解析并合并
+    # 合并数据
     all_rows = []
-    raw_header = None
-    for d in chosen:
+    for d in selected:
         path = os.path.join(args.root, d, 'summary.txt')
-        h, rows = parse_summary(path)
-        if raw_header is None:
-            raw_header = h
+        rows = parse_summary(path)
         all_rows.extend(rows)
 
-    # 4. 构造输出表头 (去除 vol_v, vol_n)
-    out_header = [col for col in raw_header if col not in ('vol_v','vol_n')]
+    # 构造 DataFrame
+    df = pd.DataFrame(all_rows)
 
-    # 5. 输出 result.txt
-    out_path = os.path.join(args.root, 'result.txt')
-    with open(out_path, 'w', encoding='utf-8', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=out_header, delimiter='\t')
-        writer.writeheader()
-        for r in all_rows:
-            # 仅写入需要的字段
-            filtered = {col: r[col] for col in out_header}
-            writer.writerow(filtered)
+    # 保存合并结果
+    result_path = os.path.join(args.root, 'result.txt')
+    df.to_csv(result_path, sep='\t', index=False)
+    print(f"已将合并数据保存至: {result_path}")
 
-    print(f"已将合并数据保存到：{out_path}")
+    # 绘制气泡图
+    plot_bubble(df)
 
 if __name__ == '__main__':
     main()
