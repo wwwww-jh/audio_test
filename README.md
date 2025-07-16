@@ -45,7 +45,7 @@ project-root/
 ```bash
 python3 -m venv venv
 source venv/bin/activate   # macOS/Linux
-# .\venv\Scripts\Activate.ps1  # Windows PowerShell
+# .\venv\Scripts\activate  # Windows PowerShell
 
 pip install -r requirements.txt
 ```
