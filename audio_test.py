@@ -59,17 +59,6 @@ def play_and_record(audio: AudioSegment) -> np.ndarray:
     sd.wait()
     return rec
 
-# 计算 WER
-def compute_wer(ref, hyp) -> float:
-    r, h = ref.split(), hyp.split()
-    d = [[0]*(len(h)+1) for _ in range(len(r)+1)]
-    for i in range(len(r)+1): d[i][0]=i
-    for j in range(len(h)+1): d[0][j]=j
-    for i in range(1,len(r)+1):
-        for j in range(1,len(h)+1):
-            d[i][j] = d[i-1][j-1] if r[i-1]==h[j-1] else 1+min(d[i-1][j],d[i][j-1],d[i-1][j-1])
-    return d[-1][-1]/max(1,len(r))
-
 # 主流程
 def main():
     base = os.getcwd()
