@@ -48,7 +48,7 @@ cd audio_test
 
 conda create -n audio_test_env python=3.10
 conda activate audio_test_env
-
+conda install -c conda-forge portaudio ffmpeg
 pip install -r requirements.txt
 ```
 
