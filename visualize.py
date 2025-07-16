@@ -1,14 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 visualize.py
 
-集成数据提取与气泡图绘制：
+集成数据提取与分模型气泡图绘制：
 - 扫描指定根目录下所有包含 summary.txt 的子目录
 - 交互式选择要分析的文件夹
 - 提取 vocal, noise, distance_m, device, dB_diff, model, CER
-- 绘制气泡图：X=distance_m, Y=dB_diff, 气泡大小=CER, 颜色=model
-- 保存结果表 result.txt 和图表 bubble.png
+- 按模型拆分子图的气泡图：X=distance_m, Y=dB_diff, 气泡大小=CER(越小越大), 颜色=device
+- 保存结果表 result.txt 和图表 bubble_by_model.png
 """
 import os
 import re
@@ -20,6 +18,7 @@ import matplotlib.pyplot as plt
 
 
 def find_summary_dirs(root_dir):
+    """返回所有包含 summary.txt 的子目录名字列表"""
     dirs = []
     for name in os.listdir(root_dir):
         full = os.path.join(root_dir, name)
@@ -29,6 +28,7 @@ def find_summary_dirs(root_dir):
 
 
 def select_dirs(dirs):
+    """交互式选择目录，返回选中的目录名字列表"""
     print("发现以下可选目录：")
     for idx, d in enumerate(dirs, start=1):
         print(f"{idx}. {d}")
@@ -69,37 +69,45 @@ def parse_summary(path):
     return rows
 
 
-def plot_bubble(df, out_file='bubble.png'):
+def plot_bubble_by_model(df, out_file='bubble_by_model.png'):
     """
-    气泡图：
-    X=distance_m, Y=dB_diff, 气泡大小=CER, 颜色=model
+    按模型拆分子图的气泡图：
+      X = distance_m
+      Y = dB_diff
+      气泡大小 = CER（错误率越小，气泡越大）
+      颜色 = device
     """
-    fig, ax = plt.subplots()
-    # 根据 CER 调整气泡大小
-    sizes = (df['CER'] - df['CER'].min() + 1) * 50
-    # 分模型绘制
-    for model, group in df.groupby('model'):
-        ax.scatter(
-            group['distance_m'],
-            group['dB_diff'],
-            s=sizes[group.index],
-            label=model,
-            alpha=0.6,
-            edgecolors='w',
-            linewidth=0.5,
-        )
-    ax.set_xlabel('Distance (m)')
-    ax.set_ylabel('dB Difference')
-    ax.set_title('Bubble Chart: Distance vs dB_diff, Bubble=CER, Color=Model')
-    ax.legend(title='Model')
+    models = df['model'].unique()
+    fig, axes = plt.subplots(1, len(models), figsize=(5*len(models), 4), sharey=True)
+    if len(models) == 1:
+        axes = [axes]
+    max_cer = df['CER'].max()
+    for ax, model in zip(axes, models):
+        sub = df[df['model'] == model]
+        # 反向映射气泡大小
+        sizes = (max_cer - sub['CER'] + 1) * 50
+        for dev, group in sub.groupby('device'):
+            ax.scatter(
+                group['distance_m'],
+                group['dB_diff'],
+                s=sizes[group.index],
+                label=dev,
+                alpha=0.6,
+                edgecolors='w',
+                linewidth=0.5
+            )
+        ax.set_title(f"Model: {model}")
+        ax.set_xlabel('Distance (m)')
+        ax.legend(title='Device')
+    axes[0].set_ylabel('dB Difference')
     fig.tight_layout()
     fig.savefig(out_file)
-    print(f"已保存气泡图: {out_file}")
+    print(f"已保存分模型气泡图: {out_file}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='合并 summary.txt 并绘制气泡图'
+        description='合并 summary.txt 并绘制分模型气泡图'
     )
     parser.add_argument(
         '--root', '-r',
@@ -134,8 +142,8 @@ def main():
     df.to_csv(result_path, sep='\t', index=False)
     print(f"已将合并数据保存至: {result_path}")
 
-    # 绘制气泡图
-    plot_bubble(df)
+    # 绘制分模型气泡图
+    plot_bubble_by_model(df)
 
 if __name__ == '__main__':
     main()
