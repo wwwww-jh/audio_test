@@ -1,8 +1,3 @@
-import audioop, sys
-sys.modules['pyaudioop'] = audioop
-
-from pydub import AudioSegment
-
 import os
 import math
 import re
