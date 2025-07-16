@@ -4,3 +4,5 @@ numpy
 scipy
 requests
 jiwer
+pandas>=1.3.0
+matplotlib>=3.4.0
