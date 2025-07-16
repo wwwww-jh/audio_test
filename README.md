@@ -43,9 +43,11 @@ project-root/
 安装方式：
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate   # macOS/Linux
-# .\venv\Scripts\activate  # Windows PowerShell
+git clone https://github.com/wwwww-jh/audio_test.git
+cd audio_test
+
+conda create -n audio_test_env python=3.10
+conda activate audio_test_env
 
 pip install -r requirements.txt
 ```
@@ -56,6 +58,7 @@ pip install -r requirements.txt
 
 1. 确保本地 ASR 服务已启动并可访问，默认接口地址：
    `http://10.10.185.9:7861/asr_large`
+   (更改成需要的ASR)
 2. 可以继续新增 ("model_name", model_call_fn)到ASR_MODELS
 
 ---
@@ -74,9 +77,9 @@ python audio_test.py
 
 脚本将对每个人声 × 噪音组合及每组参数执行测试，生成以下文件：
 
-* `mixed_<人声>_<噪音>_<音量人声>_<音量噪音>_<模型名称>.wav`
-* `rec_<人声>_<噪音>_<音量人声>_<音量噪音>_<模型名称>.wav`
-* `result_<人声>_<噪音>_<音量人声>_<音量噪音>_<模型名称>.txt`
+* `mixed_<人声>_<噪音>_<音量人声>_<音量噪音>_<分贝差>_<模型名称>.wav`
+* `rec_<人声>_<噪音>_<音量人声>_<音量噪音>_<分贝差>_<模型名称>.wav`
+* `result_<人声>_<噪音>_<音量人声>_<音量噪音>_<分贝差>_<模型名称>.txt`
 * `summary.txt` （汇总所有测试的 CER）
 
 ---

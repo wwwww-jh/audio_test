@@ -1,9 +1,0 @@
-vocal	noise	vol_v	vol_n	model	CER
-1.m4a	办公室.m4a	80.0	30.0	large	1.99%
-1.m4a	办公室.m4a	80.0	60.0	large	3.98%
-1.m4a	施工.m4a	80.0	30.0	large	1.59%
-1.m4a	施工.m4a	80.0	60.0	large	3.98%
-2.wav	办公室.m4a	80.0	30.0	large	17.15%
-2.wav	办公室.m4a	80.0	60.0	large	10.87%
-2.wav	施工.m4a	80.0	30.0	large	15.94%
-2.wav	施工.m4a	80.0	60.0	large	20.77%
