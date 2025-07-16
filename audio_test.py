@@ -81,9 +81,16 @@ def main():
             ref_texts[v] = open(txt, encoding='utf-8').read().strip()
         else:
             print(f'缺少参考文本: {txt}，该文件将被忽略')
-    # 输出目录
-    out_dir = input('请输入结果保存目录名称：').strip()
+
+    # 询问距离 —— #
+    distance = float(input('请输入音源与麦克风的距离（米）：').strip())
+    # 询问收音设备 —— #
+    device_name = input('请输入收音设备名称：').strip()
+    # 自动生成输出目录
+    out_dir = f"{device_name}-{distance:.2f}m"
     os.makedirs(out_dir, exist_ok=True)
+    print(f"结果将保存在目录：{out_dir}")
+
     # 测试参数采集
     n = int(input('请输入音量测试次数：').strip())
     params = []
@@ -127,14 +134,14 @@ def main():
                         clean_chinese_text(ref_texts[v]),
                         clean_chinese_text(hyp)
                     )
-                    summary.append((v, noise, vv, vn, db_diff, model_name, c))
-                    print(f"{base_name} [{model_name}] CER: {c*100:.2f}%, dB差: {db_diff:.2f}dB")
+                    summary.append((v, noise, vv, vn, distance, device_name, db_diff, model_name, c))
+                    print(f"{base_name} [{model_name}] 距离: {distance:.2f}m, 设备: {device_name}, dB差: {db_diff:.2f}dB, CER: {c*100:.2f}%")
     # 写 summary
     sum_file = os.path.join(out_dir, 'summary.txt')
     with open(sum_file, 'w', encoding='utf-8') as sf:
-        sf.write('vocal\tnoise\tvol_v\tvol_n\tdB_diff\tmodel\tCER\n')
-        for v, noise, vv, vn, db_diff, model_name, c in summary:
-            sf.write(f'{v}\t{noise}\t{vv}\t{vn}\t{db_diff:.2f} dB\t{model_name}\t{c*100:.2f}%\n')
+        sf.write('vocal\tnoise\tvol_v\tvol_n\tdistance_m\tdevice\tdB_diff\tmodel\tCER\n')
+        for v, noise, vv, vn, dist, dev, db_diff, model_name, c in summary:
+            sf.write(f'{v}\t{noise}\t{vv}\t{vn}\t{dist:.2f}\t{dev}\t{db_diff:.2f} dB\t{model_name}\t{c*100:.2f}%\n')
     print('全部完成，结果在', out_dir)
 
 if __name__=='__main__':
